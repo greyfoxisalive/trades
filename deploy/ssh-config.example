@@ -1,0 +1,21 @@
+# SSH конфигурация для DigitalOcean Droplet
+# Скопируйте этот файл в ~/.ssh/config или добавьте содержимое в существующий файл
+
+Host steam-trade-droplet
+    HostName YOUR_DROPLET_IP
+    User root
+    Port 22
+    IdentityFile ~/.ssh/id_rsa
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    StrictHostKeyChecking yes
+
+# Альтернативный вариант с пользователем (если создан)
+# Host steam-trade-droplet
+#     HostName YOUR_DROPLET_IP
+#     User deploy
+#     Port 22
+#     IdentityFile ~/.ssh/id_rsa_deploy
+#     ServerAliveInterval 60
+#     ServerAliveCountMax 3
+#     StrictHostKeyChecking yes

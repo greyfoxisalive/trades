@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  steamId   String   @unique
+  username  String
+  avatar    String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tradeOffersFrom TradeOffer[] @relation("TradeOffersFrom")
+  tradeOffersTo   TradeOffer[] @relation("TradeOffersTo")
+
+  @@map("users")
+}
+
+model TradeOffer {
+  id         String           @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  status     String           // PENDING, ACCEPTED, DECLINED, CANCELLED, EXPIRED
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  fromUser User            @relation("TradeOffersFrom", fields: [fromUserId], references: [id])
+  toUser   User            @relation("TradeOffersTo", fields: [toUserId], references: [id])
+  items    TradeOfferItem[]
+
+  @@map("trade_offers")
+}
+
+model TradeOfferItem {
+  id          String     @id @default(uuid())
+  tradeOfferId String
+  assetId     String
+  appId       Int
+  contextId   String
+  amount      Int        @default(1)
+  isFrom      Boolean    @default(true) // true for itemsFrom, false for itemsTo
+
+  tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+
+  @@map("trade_offer_items")
+}

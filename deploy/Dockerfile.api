@@ -1,0 +1,68 @@
+# Dockerfile для API сервера
+FROM node:20-alpine AS base
+
+# Установка pnpm
+RUN npm install -g pnpm@latest
+
+WORKDIR /app
+
+# Копирование файлов конфигурации
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/config/package.json ./packages/config/
+COPY apps/api/package.json ./apps/api/
+
+# Установка зависимостей
+RUN pnpm install --frozen-lockfile
+
+# Копирование исходного кода
+COPY packages/shared ./packages/shared
+COPY packages/config ./packages/config
+COPY apps/api ./apps/api
+COPY tsconfig.json ./
+
+# Сборка shared пакета
+WORKDIR /app/packages/shared
+RUN pnpm exec tsc
+
+# Генерация Prisma клиента и сборка API
+WORKDIR /app/apps/api
+RUN pnpm db:generate
+RUN pnpm build
+
+# Production образ
+FROM node:20-alpine AS production
+
+RUN npm install -g pnpm@latest
+
+WORKDIR /app
+
+# Копирование package.json файлов
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/api/package.json ./apps/api/
+
+# Установка только production зависимостей
+RUN pnpm install --prod || pnpm install --force --prod
+
+# Копирование собранных файлов
+COPY --from=base /app/apps/api/dist ./apps/api/dist
+COPY --from=base /app/apps/api/prisma ./apps/api/prisma
+COPY --from=base /app/packages/shared/dist ./packages/shared/dist
+COPY --from=base /app/packages/shared/src ./packages/shared/src
+COPY --from=base /app/packages/shared/package.json ./packages/shared/
+# Копирование Prisma клиента из base образа
+COPY --from=base /app/apps/api/node_modules/.prisma ./apps/api/node_modules/.prisma
+
+WORKDIR /app/apps/api
+
+# Копирование entrypoint скрипта из deploy директории
+COPY deploy/docker-entrypoint-api.sh /app/docker-entrypoint-api.sh
+RUN chmod +x /app/docker-entrypoint-api.sh
+
+# Установка postgresql-client для проверки готовности БД
+RUN apk add --no-cache postgresql-client
+
+EXPOSE 3001
+
+ENTRYPOINT ["/app/docker-entrypoint-api.sh"]
