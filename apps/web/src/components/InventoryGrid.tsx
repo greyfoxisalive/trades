@@ -8,7 +8,10 @@ interface InventoryGridProps {
 }
 
 export function InventoryGrid({ items, selectedItems, onItemClick }: InventoryGridProps) {
-  if (items.length === 0) {
+  // Защита от не-массивов
+  const safeItems = Array.isArray(items) ? items : []
+  
+  if (safeItems.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p>Инвентарь пуст</p>
@@ -18,7 +21,7 @@ export function InventoryGrid({ items, selectedItems, onItemClick }: InventoryGr
   
   return (
     <div className="grid grid-cols-2 gap-3">
-      {items.map((item, index) => (
+      {safeItems.map((item, index) => (
         <div key={item.assetid} className="fade-transition fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
           <SkinCard
             item={item}

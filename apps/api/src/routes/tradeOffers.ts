@@ -7,27 +7,30 @@ export const tradeOffersRoutes: RouterType = Router()
 tradeOffersRoutes.use(authMiddleware)
 
 function mapTradeOfferToDTO(tradeOffer: any) {
+  const itemsFrom = tradeOffer.getItemsFrom() || []
+  const itemsTo = tradeOffer.getItemsTo() || []
+  
   return {
     id: tradeOffer.getId().getValue(),
     fromUserId: tradeOffer.getFromUserId().getValue(),
     toUserId: tradeOffer.getToUserId().getValue(),
     status: tradeOffer.getStatus().toString(),
-    itemsFrom: tradeOffer.getItemsFrom().map((item: any) => ({
+    itemsFrom: Array.isArray(itemsFrom) ? itemsFrom.map((item: any) => ({
       id: '',
       tradeOfferId: tradeOffer.getId().getValue(),
       assetId: item.getAssetId(),
       appId: item.getAppId(),
       contextId: item.getContextId(),
       amount: item.getAmount(),
-    })),
-    itemsTo: tradeOffer.getItemsTo().map((item: any) => ({
+    })) : [],
+    itemsTo: Array.isArray(itemsTo) ? itemsTo.map((item: any) => ({
       id: '',
       tradeOfferId: tradeOffer.getId().getValue(),
       assetId: item.getAssetId(),
       appId: item.getAppId(),
       contextId: item.getContextId(),
       amount: item.getAmount(),
-    })),
+    })) : [],
     createdAt: tradeOffer.getCreatedAt(),
     updatedAt: tradeOffer.getUpdatedAt(),
   }

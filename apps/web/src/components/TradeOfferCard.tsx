@@ -29,6 +29,10 @@ export function TradeOfferCard({ tradeOffer, currentUserId, onAccept, onDecline 
   const isIncoming = tradeOffer.toUserId === currentUserId
   const canInteract = isIncoming && tradeOffer.status === 'PENDING'
   
+  // Защита от не-массивов
+  const itemsFrom = Array.isArray(tradeOffer.itemsFrom) ? tradeOffer.itemsFrom : []
+  const itemsTo = Array.isArray(tradeOffer.itemsTo) ? tradeOffer.itemsTo : []
+  
   return (
     <Card className="mb-4 shadow-purple fade-transition">
       <CardHeader>
@@ -45,7 +49,7 @@ export function TradeOfferCard({ tradeOffer, currentUserId, onAccept, onDecline 
         <div>
           <h4 className="text-sm font-semibold mb-2">Ваши предметы:</h4>
           <div className="grid grid-cols-2 gap-2">
-            {tradeOffer.itemsFrom.map((item, idx) => (
+            {itemsFrom.map((item, idx) => (
               <SkinCard
                 key={idx}
                 item={{
@@ -66,7 +70,7 @@ export function TradeOfferCard({ tradeOffer, currentUserId, onAccept, onDecline 
             {isIncoming ? 'Предметы отправителя:' : 'Получаете:'}
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            {tradeOffer.itemsTo.map((item, idx) => (
+            {itemsTo.map((item, idx) => (
               <SkinCard
                 key={idx}
                 item={{

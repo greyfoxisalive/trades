@@ -59,7 +59,7 @@ export function TradeOffersPage() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 gradient-purple-text">Мои обмены</h1>
         
-        {!tradeOffers || tradeOffers.length === 0 ? (
+        {!tradeOffers || !Array.isArray(tradeOffers) || tradeOffers.length === 0 ? (
           <Card className="fade-transition fade-in">
             <CardContent className="p-6">
               <p className="text-muted-foreground text-center">

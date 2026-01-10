@@ -195,7 +195,7 @@ export function CreateTradePage() {
                 Выберите предметы, которые хотите получить
               </DialogDescription>
             </DialogHeader>
-            {targetInventory && (
+            {targetInventory && Array.isArray(targetInventory) && (
               <div className="grid grid-cols-2 gap-2">
                 {targetInventory.map((item, index) => (
                   <div key={item.assetid} className="fade-transition fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
