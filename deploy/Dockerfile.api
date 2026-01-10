@@ -42,19 +42,20 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
 
-# Установка только production зависимостей
-RUN pnpm install --prod || pnpm install --force --prod
+# Установка зависимостей (включая dev для Prisma)
+RUN pnpm install || pnpm install --force
 
-# Копирование собранных файлов
+# Копирование собранных файлов из base образа
 COPY --from=base /app/apps/api/dist ./apps/api/dist
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
 COPY --from=base /app/packages/shared/src ./packages/shared/src
 COPY --from=base /app/packages/shared/package.json ./packages/shared/
-# Копирование Prisma клиента из base образа
-COPY --from=base /app/apps/api/node_modules/.prisma ./apps/api/node_modules/.prisma
 
 WORKDIR /app/apps/api
+
+# Генерация Prisma клиента в production образе
+RUN pnpm db:generate
 
 # Копирование entrypoint скрипта из deploy директории
 COPY deploy/docker-entrypoint-api.sh /app/docker-entrypoint-api.sh
