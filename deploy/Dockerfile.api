@@ -29,6 +29,8 @@ RUN pnpm exec tsc
 WORKDIR /app/apps/api
 RUN pnpm db:generate
 RUN pnpm build
+# Проверка что dist создан
+RUN test -d dist || (echo "ERROR: dist directory not created" && ls -la && exit 1)
 
 # Production образ
 FROM node:20-alpine AS production
