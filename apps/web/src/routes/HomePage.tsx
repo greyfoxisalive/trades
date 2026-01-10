@@ -2,7 +2,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@steam-trade/u
 import { useAuth } from '../hooks/useAuth'
 
 export function HomePage() {
-  const { user, isAuthenticated, login } = useAuth()
+  const { user, isAuthenticated, isLoading, login } = useAuth()
   
   return (
     <div className="min-h-screen pb-20 fade-transition fade-in">
@@ -19,7 +19,13 @@ export function HomePage() {
           </div>
         </div>
         
-        {!isAuthenticated ? (
+        {isLoading ? (
+          <Card className="shadow-purple-lg fade-transition fade-in">
+            <CardContent className="p-6">
+              <p className="text-muted-foreground text-center">Загрузка...</p>
+            </CardContent>
+          </Card>
+        ) : !isAuthenticated ? (
           <Card className="shadow-purple-lg fade-transition fade-in">
             <CardHeader>
               <CardTitle className="text-2xl">Вход через Steam</CardTitle>

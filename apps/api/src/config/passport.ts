@@ -19,13 +19,14 @@ passport.use(
     async (identifier: string, profile: any, done: any) => {
       try {
         const steamId = identifier.split('/').pop() || ''
+        const photos = Array.isArray(profile.photos) ? profile.photos : []
         const user = {
           id: steamId,
           steamid: steamId,
           displayName: profile.displayName,
           username: profile.username,
-          photos: profile.photos,
-          avatar: profile.photos?.[0]?.value,
+          photos: photos,
+          avatar: photos.length > 0 ? photos[0].value : undefined,
         }
         return done(null, user)
       } catch (error) {

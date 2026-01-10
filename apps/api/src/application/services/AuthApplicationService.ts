@@ -14,17 +14,20 @@ export class AuthApplicationService {
     
     let user = await this.userRepository.findBySteamId(steamId)
     
+    const photos = Array.isArray(steamUser.photos) ? steamUser.photos : []
+    const avatar = photos.length > 0 ? photos[0].value : (steamUser.avatar || '')
+    
     if (!user) {
       // Use repository's createNew method which handles ID generation
       user = await this.userRepository.createNew(
         steamId,
         steamUser.displayName || steamUser.username || 'Unknown',
-        steamUser.photos?.[0]?.value || steamUser.avatar || ''
+        avatar
       )
     } else {
       user.updateProfile(
         steamUser.displayName || steamUser.username || user.getUsername(),
-        steamUser.photos?.[0]?.value || steamUser.avatar || user.getAvatar()
+        avatar || user.getAvatar()
       )
       user = await this.userRepository.save(user)
     }

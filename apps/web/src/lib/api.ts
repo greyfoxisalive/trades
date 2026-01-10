@@ -11,8 +11,16 @@ export const authApi = {
     window.location.href = '/api/auth/steam'
   },
   me: async (): Promise<User> => {
-    const { data } = await api.get('/auth/me')
-    return data
+    try {
+      const { data } = await api.get('/auth/me')
+      return data
+    } catch (error: any) {
+      // При ошибке 401 выбрасываем ошибку, чтобы React Query правильно обработал её
+      if (error.response?.status === 401) {
+        throw new Error('Unauthorized')
+      }
+      throw error
+    }
   },
 }
 
