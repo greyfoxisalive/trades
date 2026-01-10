@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Скрипт для деплоя приложения на DigitalOcean Droplet
-# Использование: ./deploy.sh [SSH_HOST]
+# Скрипт для деплоя приложения на DigitalOcean Droplet через Git
+# Использование: ./deploy.sh [SSH_HOST] [GIT_REPO_URL] [BRANCH]
 
 set -e
 
@@ -13,6 +13,8 @@ NC='\033[0m' # No Color
 
 # Проверка аргументов
 SSH_HOST=${1:-steam-trade-droplet}
+GIT_REPO_URL=${2:-}
+BRANCH=${3:-main}
 REMOTE_DIR="/root/steam-trade"
 
 echo -e "${GREEN}🚀 Начало деплоя на ${SSH_HOST}${NC}"
@@ -32,22 +34,69 @@ fi
 
 echo -e "${GREEN}✓ SSH подключение установлено${NC}"
 
-# Создание директории на сервере
-echo -e "${YELLOW}Создание директории на сервере...${NC}"
-ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR"
-
-# Копирование файлов
-echo -e "${YELLOW}Копирование файлов...${NC}"
-rsync -avz --exclude 'node_modules' --exclude '.git' \
-    --exclude '*.db' --exclude '*.db-journal' \
-    --exclude '.env' \
-    ./ "$SSH_HOST:$REMOTE_DIR/"
-
-# Копирование только deploy директории (если запускаем из корня проекта)
-if [ -d "deploy" ]; then
-    echo -e "${YELLOW}Копирование конфигурации деплоя...${NC}"
-    rsync -avz deploy/ "$SSH_HOST:$REMOTE_DIR/deploy/"
+# Определение URL репозитория, если не указан
+if [ -z "$GIT_REPO_URL" ]; then
+    echo -e "${YELLOW}Определение URL репозитория из локального git...${NC}"
+    if git remote get-url origin > /dev/null 2>&1; then
+        GIT_REPO_URL=$(git remote get-url origin)
+        echo -e "${GREEN}✓ Найден репозиторий: ${GIT_REPO_URL}${NC}"
+    else
+        echo -e "${RED}❌ Ошибка: Не удалось определить URL репозитория${NC}"
+        echo -e "${YELLOW}Укажите URL репозитория вручную:${NC}"
+        echo "  ./deploy.sh $SSH_HOST <GIT_REPO_URL> [BRANCH]"
+        exit 1
+    fi
 fi
+
+# Проверка наличия git на сервере
+echo -e "${YELLOW}Проверка Git на сервере...${NC}"
+if ! ssh "$SSH_HOST" "command -v git" > /dev/null 2>&1; then
+    echo -e "${YELLOW}Git не установлен. Установка Git...${NC}"
+    ssh "$SSH_HOST" << 'EOF'
+        if command -v apt-get > /dev/null 2>&1; then
+            apt-get update && apt-get install -y git
+        elif command -v yum > /dev/null 2>&1; then
+            yum install -y git
+        elif command -v apk > /dev/null 2>&1; then
+            apk add --no-cache git
+        else
+            echo "Не удалось определить пакетный менеджер для установки Git"
+            exit 1
+        fi
+EOF
+fi
+
+echo -e "${GREEN}✓ Git готов${NC}"
+
+# Клонирование или обновление репозитория
+echo -e "${YELLOW}Синхронизация кода из Git репозитория...${NC}"
+if ! ssh "$SSH_HOST" << EOF
+    if [ -d "$REMOTE_DIR/.git" ]; then
+        echo "Репозиторий уже существует, обновление..."
+        cd $REMOTE_DIR
+        git fetch origin
+        if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
+            git reset --hard origin/$BRANCH
+            git clean -fd
+        else
+            echo "Ошибка: ветка origin/$BRANCH не найдена"
+            exit 1
+        fi
+    else
+        echo "Клонирование репозитория..."
+        rm -rf $REMOTE_DIR
+        if ! git clone -b $BRANCH $GIT_REPO_URL $REMOTE_DIR; then
+            echo "Ошибка: не удалось клонировать репозиторий или ветка $BRANCH не существует"
+            exit 1
+        fi
+    fi
+EOF
+then
+    echo -e "${RED}❌ Ошибка при синхронизации кода из Git${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Код синхронизирован из Git (ветка: $BRANCH)${NC}"
 
 # Проверка наличия .env файла
 echo -e "${YELLOW}Проверка переменных окружения...${NC}"

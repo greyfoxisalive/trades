@@ -6,13 +6,38 @@
 
 Перед развертыванием приложения необходимо настроить SSH доступ к вашему droplet. Подробные инструкции см. в [SSH_SETUP.md](./SSH_SETUP.md).
 
+## Настройка Git доступа
+
+Скрипт деплоя использует Git для синхронизации кода. Убедитесь, что:
+
+1. **SSH ключ для Git**: Если ваш репозиторий использует SSH (например, `git@github.com:...`), тот же SSH ключ, который используется для подключения к серверу, должен иметь доступ к репозиторию.
+
+2. **HTTPS с токеном**: Если репозиторий использует HTTPS, вам может потребоваться настроить Git credentials на сервере или использовать токен доступа в URL:
+   ```bash
+   ./deploy/deploy.sh steam-trade-droplet https://TOKEN@github.com/user/repo.git main
+   ```
+
+3. **Публичный репозиторий**: Если репозиторий публичный, дополнительная настройка не требуется.
+
 После настройки SSH вы можете использовать скрипт автоматического деплоя:
 
 ```bash
-./deploy/deploy.sh [SSH_HOST]
+./deploy/deploy.sh [SSH_HOST] [GIT_REPO_URL] [BRANCH]
 ```
 
-Где `SSH_HOST` - это имя хоста из вашего `~/.ssh/config` (по умолчанию `steam-trade-droplet`) или IP адрес droplet.
+Где:
+- `SSH_HOST` - имя хоста из вашего `~/.ssh/config` (по умолчанию `steam-trade-droplet`) или IP адрес droplet
+- `GIT_REPO_URL` - URL Git репозитория (опционально, если не указан, будет использован URL из локального `git remote`)
+- `BRANCH` - ветка для деплоя (по умолчанию `main`)
+
+Примеры:
+```bash
+# Использование локального git remote и ветки main
+./deploy/deploy.sh steam-trade-droplet
+
+# Указание конкретного репозитория и ветки
+./deploy/deploy.sh steam-trade-droplet git@github.com:user/repo.git production
+```
 
 ## Структура
 
