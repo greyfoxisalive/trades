@@ -3,7 +3,7 @@ import { authApi } from '../lib/api'
 import type { User } from '@steam-trade/shared'
 
 export function useAuth() {
-  const { data: user, isLoading, error, isError } = useQuery<User>({
+  const { data: user, isLoading, isError } = useQuery<User>({
     queryKey: ['auth', 'me'],
     queryFn: authApi.me,
     retry: false,
