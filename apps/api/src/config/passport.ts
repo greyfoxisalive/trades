@@ -18,7 +18,23 @@ passport.use(
     },
     async (identifier: string, profile: any, done: any) => {
       try {
-        const steamId = identifier.split('/').pop() || ''
+        // Steam identifier обычно в формате "http://steamcommunity.com/openid/id/7656119..."
+        // или просто Steam64 ID
+        let steamId = identifier.split('/').pop() || ''
+        
+        // Если identifier уже является Steam64 ID (начинается с 7656119)
+        if (identifier.startsWith('7656119')) {
+          steamId = identifier
+        }
+        
+        // Валидация Steam ID
+        if (!steamId || !/^\d{17}$/.test(steamId)) {
+          console.error('Invalid Steam ID format:', { identifier, steamId, profile })
+          return done(new Error(`Invalid Steam ID format: ${steamId}`), null)
+        }
+        
+        console.log('Steam authentication successful:', { steamId, username: profile.username })
+        
         const photos = Array.isArray(profile.photos) ? profile.photos : []
         const user = {
           id: steamId,
@@ -30,6 +46,7 @@ passport.use(
         }
         return done(null, user)
       } catch (error) {
+        console.error('Passport Steam strategy error:', error)
         return done(error, null)
       }
     }

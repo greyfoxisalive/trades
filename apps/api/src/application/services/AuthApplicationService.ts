@@ -10,7 +10,20 @@ export class AuthApplicationService {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async handleSteamCallback(steamUser: any): Promise<User> {
-    const steamId = SteamId.create(steamUser.id || steamUser.steamid)
+    const rawSteamId = steamUser.id || steamUser.steamid
+    
+    if (!rawSteamId) {
+      throw new Error('Steam ID is missing from callback')
+    }
+    
+    // Валидация формата Steam ID перед созданием
+    if (!/^\d{17}$/.test(String(rawSteamId))) {
+      console.error('Invalid Steam ID format in callback:', { steamUser, rawSteamId })
+      throw new Error(`Invalid Steam ID format: ${rawSteamId}. Expected 17-digit Steam64 ID`)
+    }
+    
+    console.log('Creating/updating user with Steam ID:', rawSteamId)
+    const steamId = SteamId.create(String(rawSteamId))
     
     let user = await this.userRepository.findBySteamId(steamId)
     

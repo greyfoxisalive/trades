@@ -27,9 +27,17 @@ export const authApi = {
 export const inventoryApi = {
   getInventory: async (steamId: string): Promise<SteamInventoryItem[]> => {
     try {
+      if (!steamId || steamId.trim() === '') {
+        throw new Error('Steam ID is required')
+      }
+      
       const { data } = await api.get(`/inventory/${steamId}`)
       return data
     } catch (error: any) {
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.error || 'Invalid Steam ID format'
+        throw new Error(errorMessage)
+      }
       if (error.response?.status === 401) {
         throw new Error('Unauthorized: Please log in to view inventory')
       }
@@ -40,7 +48,7 @@ export const inventoryApi = {
         const errorMessage = error.response?.data?.error || 'Failed to fetch inventory from Steam'
         throw new Error(errorMessage)
       }
-      throw new Error(error.response?.data?.error || 'Failed to fetch inventory')
+      throw new Error(error.response?.data?.error || error.message || 'Failed to fetch inventory')
     }
   },
 }
