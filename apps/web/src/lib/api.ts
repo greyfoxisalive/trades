@@ -26,8 +26,22 @@ export const authApi = {
 
 export const inventoryApi = {
   getInventory: async (steamId: string): Promise<SteamInventoryItem[]> => {
-    const { data } = await api.get(`/inventory/${steamId}`)
-    return data
+    try {
+      const { data } = await api.get(`/inventory/${steamId}`)
+      return data
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error('Unauthorized: Please log in to view inventory')
+      }
+      if (error.response?.status === 404) {
+        throw new Error('User not found or inventory is private')
+      }
+      if (error.response?.status === 500) {
+        const errorMessage = error.response?.data?.error || 'Failed to fetch inventory from Steam'
+        throw new Error(errorMessage)
+      }
+      throw new Error(error.response?.data?.error || 'Failed to fetch inventory')
+    }
   },
 }
 

@@ -46,9 +46,29 @@ export class SteamInventoryService implements ISteamInventoryService {
       })
 
       return items.filter(item => item.tradable === 1)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Steam inventory API error:', error)
-      throw error
+      
+      // Provide more specific error messages
+      if (error.response) {
+        const status = error.response.status
+        if (status === 403) {
+          throw new Error('Inventory is private or access denied')
+        }
+        if (status === 404) {
+          throw new Error('User not found or inventory does not exist')
+        }
+        if (status === 429) {
+          throw new Error('Rate limit exceeded. Please try again later')
+        }
+        throw new Error(`Steam API error: ${status}`)
+      }
+      
+      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+        throw new Error('Steam API is temporarily unavailable')
+      }
+      
+      throw new Error(error.message || 'Failed to fetch inventory from Steam')
     }
   }
 }

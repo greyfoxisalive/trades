@@ -17,13 +17,13 @@ export function CreateTradePage() {
   const [showUserDialog, setShowUserDialog] = useState(false)
   const [targetSteamId, setTargetSteamId] = useState('')
   
-  const { data: myInventory } = useQuery({
+  const { data: myInventory, error: myInventoryError, isLoading: isLoadingMyInventory } = useQuery({
     queryKey: ['inventory', user?.steamId],
     queryFn: () => inventoryApi.getInventory(user?.steamId || ''),
     enabled: !!user?.steamId && isAuthenticated,
   })
   
-  const { data: targetInventory } = useQuery({
+  const { data: targetInventory, error: targetInventoryError, isLoading: isLoadingTargetInventory } = useQuery({
     queryKey: ['inventory', targetSteamId],
     queryFn: () => inventoryApi.getInventory(targetSteamId),
     enabled: !!targetSteamId && showUserDialog,
@@ -154,27 +154,47 @@ export function CreateTradePage() {
         <div className="space-y-4 mb-4">
           <div>
             <h2 className="text-lg font-semibold mb-2">Ваши предметы ({selectedFromItems.size})</h2>
-            {myInventory ? (
+            {isLoadingMyInventory ? (
+              <p className="text-muted-foreground fade-transition fade-in">Загрузка инвентаря...</p>
+            ) : myInventoryError ? (
+              <Card className="border-red-500">
+                <CardContent className="p-4">
+                  <p className="text-red-500 text-sm">
+                    {myInventoryError instanceof Error ? myInventoryError.message : 'Ошибка загрузки инвентаря'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : myInventory ? (
               <InventoryGrid
                 items={myInventory}
                 selectedItems={selectedFromItems}
                 onItemClick={handleFromItemClick}
               />
-            ) : (
-              <p className="text-muted-foreground fade-transition fade-in">Загрузка инвентаря...</p>
-            )}
+            ) : null}
           </div>
           
-          {showUserDialog && targetInventory && (
+          {showUserDialog && (
             <div className="fade-transition fade-in">
               <h2 className="text-lg font-semibold mb-2">
                 Предметы получателя ({selectedToItems.size})
               </h2>
-              <InventoryGrid
-                items={targetInventory}
-                selectedItems={selectedToItems}
-                onItemClick={handleToItemClick}
-              />
+              {isLoadingTargetInventory ? (
+                <p className="text-muted-foreground">Загрузка инвентаря получателя...</p>
+              ) : targetInventoryError ? (
+                <Card className="border-red-500">
+                  <CardContent className="p-4">
+                    <p className="text-red-500 text-sm">
+                      {targetInventoryError instanceof Error ? targetInventoryError.message : 'Ошибка загрузки инвентаря получателя'}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : targetInventory ? (
+                <InventoryGrid
+                  items={targetInventory}
+                  selectedItems={selectedToItems}
+                  onItemClick={handleToItemClick}
+                />
+              ) : null}
             </div>
           )}
         </div>
@@ -195,7 +215,17 @@ export function CreateTradePage() {
                 Выберите предметы, которые хотите получить
               </DialogDescription>
             </DialogHeader>
-            {targetInventory && Array.isArray(targetInventory) && (
+            {isLoadingTargetInventory ? (
+              <p className="text-muted-foreground text-center">Загрузка инвентаря...</p>
+            ) : targetInventoryError ? (
+              <Card className="border-red-500">
+                <CardContent className="p-4">
+                  <p className="text-red-500 text-sm text-center">
+                    {targetInventoryError instanceof Error ? targetInventoryError.message : 'Ошибка загрузки инвентаря получателя'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : targetInventory && Array.isArray(targetInventory) ? (
               <div className="grid grid-cols-2 gap-2">
                 {targetInventory.map((item, index) => (
                   <div key={item.assetid} className="fade-transition fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
@@ -207,7 +237,7 @@ export function CreateTradePage() {
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
             <div className="flex gap-2 mt-4">
               <Button
                 onClick={() => {

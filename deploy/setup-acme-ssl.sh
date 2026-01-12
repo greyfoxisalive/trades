@@ -33,7 +33,7 @@ ssh "$SSH_HOST" << EOF
     
     # Получаем сертификат через standalone режим
     echo "Получение SSL сертификата..."
-    ~/.acme.sh/acme.sh --issue --standalone -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+    ~/.acme.sh/acme.sh --issue --standalone -d $DOMAIN -m $EMAIL
     
     # Создаем директорию для сертификатов
     mkdir -p ssl-certs

@@ -7,7 +7,7 @@ import { InventoryGrid } from '../components/InventoryGrid'
 export function ProfilePage() {
   const { user, isAuthenticated, login } = useAuth()
   
-  const { data: inventory } = useQuery({
+  const { data: inventory, error: inventoryError, isLoading: isLoadingInventory } = useQuery({
     queryKey: ['inventory', user?.steamId],
     queryFn: () => inventoryApi.getInventory(user?.steamId || ''),
     enabled: !!user?.steamId && isAuthenticated,
@@ -63,10 +63,18 @@ export function ProfilePage() {
             <CardTitle>Мой инвентарь ({inventory?.length || 0} предметов)</CardTitle>
           </CardHeader>
           <CardContent>
-            {inventory ? (
+            {isLoadingInventory ? (
+              <p className="text-muted-foreground">Загрузка инвентаря...</p>
+            ) : inventoryError ? (
+              <div className="p-4 border border-red-500 rounded-lg">
+                <p className="text-red-500 text-sm">
+                  {inventoryError instanceof Error ? inventoryError.message : 'Ошибка загрузки инвентаря'}
+                </p>
+              </div>
+            ) : inventory ? (
               <InventoryGrid items={inventory} />
             ) : (
-              <p className="text-muted-foreground">Загрузка инвентаря...</p>
+              <p className="text-muted-foreground">Инвентарь пуст</p>
             )}
           </CardContent>
         </Card>
