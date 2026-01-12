@@ -9,6 +9,7 @@ import { authRoutes } from './routes/auth.js'
 import { inventoryRoutes } from './routes/inventory.js'
 import { tradeOffersRoutes } from './routes/tradeOffers.js'
 import { usersRoutes } from './routes/users.js'
+import { Request, Response, NextFunction } from 'express'
 
 dotenv.config()
 
@@ -21,6 +22,58 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use(cookieParser())
+
+// Request logging middleware (after body parsing)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now()
+  const timestamp = new Date().toISOString()
+  
+  // Скрываем чувствительные заголовки
+  const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key']
+  const sanitizedHeaders = { ...req.headers }
+  sensitiveHeaders.forEach(header => {
+    if (sanitizedHeaders[header]) {
+      sanitizedHeaders[header] = '[REDACTED]'
+    }
+  })
+  
+  // Ограничиваем размер тела для логирования (макс 1000 символов)
+  const MAX_BODY_LENGTH = 1000
+  let bodyPreview = ''
+  if (req.body && Object.keys(req.body).length > 0) {
+    const bodyStr = JSON.stringify(req.body)
+    bodyPreview = bodyStr.length > MAX_BODY_LENGTH 
+      ? bodyStr.substring(0, MAX_BODY_LENGTH) + '... [truncated]'
+      : bodyStr
+  }
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start
+    const ip = req.ip || req.socket.remoteAddress || 'unknown'
+    const method = req.method
+    const url = req.originalUrl || req.url
+    const statusCode = res.statusCode
+    
+    console.log(`[${timestamp}] ${method} ${url} ${statusCode} - ${duration}ms - IP: ${ip}`)
+    console.log('Headers:', JSON.stringify(sanitizedHeaders, null, 2))
+    
+    if (Object.keys(req.query).length > 0) {
+      console.log('Query:', JSON.stringify(req.query, null, 2))
+    }
+    
+    if (Object.keys(req.params).length > 0) {
+      console.log('Params:', JSON.stringify(req.params, null, 2))
+    }
+    
+    if (bodyPreview) {
+      console.log('Body:', bodyPreview)
+    }
+    
+    console.log('---')
+  })
+  
+  next()
+})
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
   resave: false,
