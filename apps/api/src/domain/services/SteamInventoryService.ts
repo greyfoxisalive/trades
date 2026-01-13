@@ -56,7 +56,7 @@ export class SteamInventoryService implements ISteamInventoryService {
       const url = `https://steamcommunity.com/inventory/${normalizedSteamId}/${appId}/${contextId}?l=english&count=5000`
       console.log(`Fetching inventory from Steam API: ${url}`)
       
-      // Steam API требует браузерный User-Agent, иначе возвращает 400
+      // Steam API требует браузерный User-Agent и дополнительные заголовки
       const response = await axios.get(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -64,11 +64,46 @@ export class SteamInventoryService implements ISteamInventoryService {
           'Accept-Language': 'en-US,en;q=0.9',
           'Accept-Encoding': 'gzip, deflate, br',
           'Referer': `https://steamcommunity.com/profiles/${normalizedSteamId}/inventory/`,
+          'Origin': 'https://steamcommunity.com',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-origin',
         },
         timeout: 30000, // 30 секунд таймаут
+        validateStatus: (status) => status < 500, // Не выбрасывать ошибку для 4xx статусов
       })
+      
+      // Проверяем статус ответа
+      if (response.status === 400) {
+        // Пытаемся получить тело ответа
+        const responseData = response.data
+        console.error('Steam API returned 400:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData,
+          dataType: typeof responseData,
+          headers: response.headers,
+        })
+        
+        // Если data null, но есть content-length, возможно проблема с декодированием
+        if (responseData === null && response.headers['content-length']) {
+          throw new Error('Steam API returned 400 Bad Request. The inventory may be private or the Steam ID may be invalid.')
+        }
+        
+        throw new Error(`Steam API returned 400 Bad Request: ${responseData?.error || responseData?.message || 'Invalid request'}`)
+      }
 
-      if (!response.data || !response.data.assets || !response.data.descriptions) {
+      if (!response.data) {
+        console.warn('Steam API returned empty data')
+        return []
+      }
+      
+      if (!response.data.assets || !response.data.descriptions) {
+        console.warn('Steam API response missing assets or descriptions:', {
+          hasAssets: !!response.data.assets,
+          hasDescriptions: !!response.data.descriptions,
+          dataKeys: Object.keys(response.data),
+        })
         return []
       }
 
