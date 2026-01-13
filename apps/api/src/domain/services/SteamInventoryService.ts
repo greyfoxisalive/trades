@@ -77,21 +77,44 @@ export class SteamInventoryService implements ISteamInventoryService {
       // Проверяем статус ответа
       if (response.status === 400) {
         // Пытаемся получить тело ответа
-        const responseData = response.data
+        let responseData = response.data
+        
+        // Если data null или undefined, пытаемся получить сырые данные
+        if (responseData === null || responseData === undefined) {
+          // Пробуем получить данные из response напрямую
+          responseData = response.data
+          console.error('Steam API returned 400 with null data:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: {
+              'content-type': response.headers['content-type'],
+              'content-encoding': response.headers['content-encoding'],
+              'content-length': response.headers['content-length'],
+            },
+          })
+          
+          // Проверяем, может быть инвентарь приватный или Steam ID неверный
+          throw new Error('Steam API returned 400 Bad Request. Possible reasons: inventory is private, Steam ID is invalid, or Steam API is blocking the request.')
+        }
+        
+        // Если data это строка, пытаемся распарсить JSON
+        if (typeof responseData === 'string') {
+          try {
+            responseData = JSON.parse(responseData)
+          } catch (e) {
+            console.error('Failed to parse Steam API response as JSON:', responseData)
+          }
+        }
+        
         console.error('Steam API returned 400:', {
           status: response.status,
           statusText: response.statusText,
           data: responseData,
           dataType: typeof responseData,
-          headers: response.headers,
         })
         
-        // Если data null, но есть content-length, возможно проблема с декодированием
-        if (responseData === null && response.headers['content-length']) {
-          throw new Error('Steam API returned 400 Bad Request. The inventory may be private or the Steam ID may be invalid.')
-        }
-        
-        throw new Error(`Steam API returned 400 Bad Request: ${responseData?.error || responseData?.message || 'Invalid request'}`)
+        const errorMessage = responseData?.error || responseData?.message || 'Invalid request'
+        throw new Error(`Steam API returned 400 Bad Request: ${errorMessage}. The inventory may be private or the Steam ID may be invalid.`)
       }
 
       if (!response.data) {
