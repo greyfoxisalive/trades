@@ -1,5 +1,11 @@
 import axios from 'axios'
+import https from 'https'
+import zlib from 'zlib'
+import { promisify } from 'util'
 import type { SteamInventoryItem } from '@steam-trade/shared'
+
+const gunzip = promisify(zlib.gunzip)
+const inflate = promisify(zlib.inflate)
 
 export interface ISteamInventoryService {
   getInventory(steamId: string, appId?: number, contextId?: number): Promise<SteamInventoryItem[]>
@@ -56,22 +62,67 @@ export class SteamInventoryService implements ISteamInventoryService {
       const url = `https://steamcommunity.com/inventory/${normalizedSteamId}/${appId}/${contextId}?l=english&count=5000`
       console.log(`Fetching inventory from Steam API: ${url}`)
       
-      // Steam API требует браузерный User-Agent и дополнительные заголовки
-      // НЕ используем Accept-Encoding, чтобы получить несжатый ответ для правильного парсинга
-      const response = await axios.get(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Referer': `https://steamcommunity.com/profiles/${normalizedSteamId}/inventory/`,
-          'Origin': 'https://steamcommunity.com',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'same-origin',
-        },
-        timeout: 30000, // 30 секунд таймаут
-        validateStatus: (status) => status < 500, // Не выбрасывать ошибку для 4xx статусов
-        decompress: true, // Автоматически распаковывать gzip/deflate ответы
+      // Используем встроенный https модуль для получения сырого ответа
+      // Steam API может возвращать сжатые ответы, которые нужно обрабатывать вручную
+      const response = await new Promise<any>((resolve, reject) => {
+        const urlObj = new URL(url)
+        const options = {
+          hostname: urlObj.hostname,
+          path: urlObj.pathname + urlObj.search,
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': `https://steamcommunity.com/profiles/${normalizedSteamId}/inventory/`,
+            'Origin': 'https://steamcommunity.com',
+          },
+          timeout: 30000,
+        }
+        
+        const req = https.request(options, (res) => {
+          let data: Buffer[] = []
+          
+          res.on('data', (chunk) => {
+            data.push(chunk)
+          })
+          
+          res.on('end', async () => {
+            try {
+              const buffer = Buffer.concat(data)
+              let responseData: any
+              
+              // Проверяем encoding и декомпрессируем если нужно
+              const encoding = res.headers['content-encoding']
+              if (encoding === 'gzip') {
+                const decompressed = await gunzip(buffer)
+                responseData = JSON.parse(decompressed.toString())
+              } else if (encoding === 'deflate') {
+                const decompressed = await inflate(buffer)
+                responseData = JSON.parse(decompressed.toString())
+              } else {
+                responseData = JSON.parse(buffer.toString())
+              }
+              
+              resolve({
+                status: res.statusCode,
+                statusText: res.statusMessage,
+                data: responseData,
+                headers: res.headers,
+              })
+            } catch (error: any) {
+              reject(error)
+            }
+          })
+        })
+        
+        req.on('error', reject)
+        req.on('timeout', () => {
+          req.destroy()
+          reject(new Error('Request timeout'))
+        })
+        
+        req.end()
       })
       
       // Проверяем статус ответа
