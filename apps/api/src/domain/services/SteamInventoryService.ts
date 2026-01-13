@@ -57,12 +57,12 @@ export class SteamInventoryService implements ISteamInventoryService {
       console.log(`Fetching inventory from Steam API: ${url}`)
       
       // Steam API требует браузерный User-Agent и дополнительные заголовки
+      // НЕ используем Accept-Encoding, чтобы получить несжатый ответ для правильного парсинга
       const response = await axios.get(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'application/json, text/plain, */*',
           'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
           'Referer': `https://steamcommunity.com/profiles/${normalizedSteamId}/inventory/`,
           'Origin': 'https://steamcommunity.com',
           'Sec-Fetch-Dest': 'empty',
@@ -71,6 +71,7 @@ export class SteamInventoryService implements ISteamInventoryService {
         },
         timeout: 30000, // 30 секунд таймаут
         validateStatus: (status) => status < 500, // Не выбрасывать ошибку для 4xx статусов
+        decompress: true, // Автоматически распаковывать gzip/deflate ответы
       })
       
       // Проверяем статус ответа
